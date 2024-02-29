@@ -18,8 +18,8 @@ int main(int argc, char *argv[]) {
     const char *result_fifo_name = "result.fifo";
 
     // Открываем файл для чтения
-    FILE *input_fp = fopen(input_file, "r");
-    if (input_fp == NULL) {
+    int input_fd = open(input_file, O_RDONLY);
+    if (input_fd == -1) {
         perror("Ошибка при открытии входного файла");
         exit(EXIT_FAILURE);
     }
@@ -34,20 +34,20 @@ int main(int argc, char *argv[]) {
 
     // Читаем данные из файла и записываем в именованный канал
     char buffer[BUFFER_SIZE];
-    size_t bytes_read;
-    while ((bytes_read = fread(buffer, sizeof(char), BUFFER_SIZE, input_fp)) > 0) {
+    ssize_t bytes_read;
+    while ((bytes_read = read(input_fd, buffer, BUFFER_SIZE)) > 0) {
         write(fifo_fd, buffer, bytes_read);
     }
 
     // Закрываем файл и канал
-    fclose(input_fp);
+    close(input_fd);
     close(fifo_fd);
 
     printf("Данные переданы через именованный канал %s\n", fifo_name);
 
     // Открываем файл для записи данных из канала
-    FILE *output_fp = fopen(output_file, "w");
-    if (output_fp == NULL) {
+    int output_fd = open(output_file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if (output_fd == -1) {
         perror("Ошибка при открытии выходного файла");
         exit(EXIT_FAILURE);
     }
@@ -61,11 +61,11 @@ int main(int argc, char *argv[]) {
 
     // Читаем данные из именованного канала и записываем их в файл
     while ((bytes_read = read(fifo_fd, buffer, BUFFER_SIZE)) > 0) {
-        fwrite(buffer, sizeof(char), bytes_read, output_fp);
+        write(output_fd, buffer, bytes_read);
     }
 
     // Закрываем файл и канал
-    fclose(output_fp);
+    close(output_fd);
     close(fifo_fd);
 
     printf("Данные записаны в файл %s\n", output_file);
